@@ -16,6 +16,8 @@ const CourseContainer = ({
   setErrorMsg,
   setErrorActive
 }) => {
+  console.log("Rendering CourseContainer:", courseObj);
+
   const handleDragStart = (e) => {
     setDraggedCourse(courseObj);
     e.dataTransfer.setData('course', JSON.stringify(courseObj));
@@ -23,13 +25,21 @@ const CourseContainer = ({
 
   const handleDrop = (e) => {
     e.preventDefault();
+    console.log("Dropped into:", context, "termKey:", termKey, "draggedCourse:", draggedCourse);
     if (!draggedCourse) return;
 
     if (context === 'calendar' && termKey) {
-      const currentList = calendarCourses[termKey] || [];
-      const filtered = currentList.filter((c) => c.name !== draggedCourse.name);
+      const list = calendarCourses[termKey] || [];
+      const filtered = list.filter((c) => c.name !== draggedCourse.name);
       filtered.splice(index, 0, draggedCourse);
-      setCalendarCourses((prev) => ({ ...prev, [termKey]: filtered }));
+      setCalendarCourses((prev) => {
+        const updated = { ...prev };
+        for (const key in updated) {
+          updated[key] = updated[key].filter((c) => c.name !== draggedCourse.name);
+        }
+        updated[termKey] = filtered;
+        return updated;
+      });
       setCourses((prev) => prev.filter((c) => c.name !== draggedCourse.name));
     } else if (context === 'bank') {
       const filtered = courses.filter((c) => c.name !== draggedCourse.name);
@@ -62,14 +72,18 @@ const CourseContainer = ({
 
   return (
     <div
-      className="flex justify-between items-center px-3 py-2 bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-white rounded-lg shadow hover:bg-gray-300 dark:hover:bg-gray-500 transition-all"
+      className={`flex justify-between items-center px-3 py-2 rounded-lg shadow transition-all mb-1 ${
+        context === 'calendar'
+          ? 'bg-white dark:bg-gray-800 text-black dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700'
+          : 'bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-white hover:bg-gray-300 dark:hover:bg-gray-500'
+      }`}
       draggable
       onDragStart={handleDragStart}
       onDragOver={(e) => {
         e.preventDefault();
         setHoverIndex({ key: context === 'calendar' ? termKey : 'bank', index });
       }}
-      onDrop={handleDrop}
+      onDrop={context === 'bank' ? handleDrop : undefined}
       onDragLeave={() => setHoverIndex(null)}
       onDoubleClick={handleDoubleClick}
     >

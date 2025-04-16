@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { MoonIcon, SunIcon } from '@heroicons/react/24/solid';
 import YearSection from './components/YearSection';
 import Sidebar from './components/Sidebar';
@@ -6,6 +6,17 @@ import Sidebar from './components/Sidebar';
 const years = [1, 2, 3, 4];
 const quarters = ['Fall', 'Winter', 'Spring', 'Summer'];
 const semesterTerms = ['Fall', 'Spring', 'Summer'];
+
+const generateInitialCalendarCourses = (years, terms) => {
+  const result = {};
+  years.forEach((year) => {
+    terms.forEach((term) => {
+      const termKey = `${year}-${term}`;
+      result[termKey] = [];
+    });
+  });
+  return result;
+};
 
 const App = () => {
   const [darkMode, setDarkMode] = useState(false);
@@ -15,7 +26,12 @@ const App = () => {
     { name: 'MATH 2B', value: '0' },
     { name: 'PHYS 7C', value: '0' },
   ]);
-  const [calendarCourses, setCalendarCourses] = useState({});
+  const [calendarCourses, setCalendarCourses] = useState(
+    generateInitialCalendarCourses(years, calendarType === 'Quarter' ? quarters : semesterTerms)
+  );
+  useEffect(() => {
+    console.log('📦 calendarCourses updated:', calendarCourses);
+  }, [calendarCourses]);
   const [newCourse, setNewCourse] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [errorActive, setErrorActive] = useState(false);
@@ -26,26 +42,31 @@ const App = () => {
 
   const currentTerms = calendarType === 'Quarter' ? quarters : semesterTerms;
 
+  const onDrop = (e) => {
+    const courseObj = JSON.parse(e.dataTransfer.getData('course'));
+    const course = courseObj.name;
+    if (!course) return;
+
+    const sidebarX = sidebarRef.current?.getBoundingClientRect().left || 0;
+    if (e.clientX >= sidebarX) {
+      const droppedInSidebar = e.target.closest('#sidebar');
+      if (!droppedInSidebar) return;
+
+      setCourses((prev) => [...prev.filter((c) => c.name !== course), courseObj]);
+      setCalendarCourses((prev) => {
+        const updated = { ...prev };
+        for (const key in updated) {
+          updated[key] = updated[key].filter((c) => c.name !== course);
+        }
+        return updated;
+      });
+    }
+  };
+
   return (
     <div
       className={darkMode ? 'dark' : ''}
-      onDrop={(e) => {
-        const courseObj = JSON.parse(e.dataTransfer.getData('course'));
-        const course = courseObj.name;
-        if (!course) return;
-
-        const sidebarX = sidebarRef.current?.getBoundingClientRect().left || 0;
-        if (e.clientX >= sidebarX) {
-          setCourses((prev) => [...prev.filter((c) => c.name !== course), courseObj]);
-          setCalendarCourses((prev) => {
-            const updated = { ...prev };
-            for (const key in updated) {
-              updated[key] = updated[key].filter((c) => c.name !== course);
-            }
-            return updated;
-          });
-        }
-      }}
+      onDrop={onDrop}
       onDragOver={(e) => e.preventDefault()}
     >
       <div className="min-h-screen bg-gray-100 dark:bg-[#121212] text-gray-900 dark:text-white transition-all duration-300 p-6">
@@ -98,6 +119,7 @@ const App = () => {
             <div className="space-y-6 transition-all duration-500 ease-in-out">
               {years.map((year) => (
                 <div key={year} className="transition-all duration-500 ease-in-out transform">
+                  {console.log('🔥 Passing to YearSection:', calendarCourses)}
                   <YearSection
                     year={year}
                     baseYear={baseYear}
@@ -113,6 +135,8 @@ const App = () => {
                     setHoverIndex={setHoverIndex}
                     setErrorMsg={setErrorMsg}
                     setErrorActive={setErrorActive}
+                    onDrop={onDrop}
+                    allowDrop={(e) => e.preventDefault()}
                   />
                 </div>
               ))}
